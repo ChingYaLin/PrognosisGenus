@@ -8,6 +8,7 @@ RenameGenus <- function(df){
   return(df)
 }
 # 1=dead,0=alive
+# hello
 DiffYearData <- function(df,year){
   temp <- df
   days <- year*365
