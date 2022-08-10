@@ -110,16 +110,40 @@ univ_results <- lapply(univ_models,
 res <- t(as.data.frame(univ_results, check.names = FALSE))
 res <- data.frame(res)
 ## Multivariate
-select_feature <- paste(clinic_covariates,collapse = "+")
-formular <- as.formula(paste('Surv(OS.time, OS)~', select_feature))
+# Risk score for univariate
+select_feature_uni <- paste(clinic_covariates[-10],collapse = "+")
+formular <- as.formula(paste('Surv(OS.time, OS)~', select_feature_uni))
 
 res.cox <- survival::coxph(formular, data =  clinical_clean)
-multiple_result <- summary(res.cox)
-multiple_coeffecient <- data.frame(multiple_result[["coefficients"]])
+multiple_result_uni <- summary(res.cox)
+multiple_coeffecient_uni <- data.frame(multiple_result_uni[["coefficients"]])
+multiple_coeffecient_uni$mullow95 <- multiple_result_uni$conf.int[,3]
+multiple_coeffecient_uni$mulhigh95 <- multiple_result_uni$conf.int[,4]
 
-clinical_result <- cbind(res,multiple_coeffecient)
-clinical_result$mullow95 <- multiple_result$conf.int[,3]
-clinical_result$mulhigh95 <- multiple_result$conf.int[,4]
+# Risk score for multivariate
+select_feature_mul <- paste(clinic_covariates[-9],collapse = "+")
+formular <- as.formula(paste('Surv(OS.time, OS)~', select_feature_mul))
+
+res.cox <- survival::coxph(formular, data =  clinical_clean)
+multiple_result_mul <- summary(res.cox)
+multiple_coeffecient_mul <- data.frame(multiple_result_mul[["coefficients"]])
+multiple_coeffecient_mul$mullow95 <- multiple_result_mul$conf.int[,3]
+multiple_coeffecient_mul$mulhigh95 <- multiple_result_mul$conf.int[,4]
+
+# Add NA column to uni and multi risk score
+addcolumn <- data.frame(NA,NA,NA,NA,NA,NA,NA)
+names(addcolumn) <- c('coef','exp.coef.','se.coef.','z','Pr...z..','mullow95','mulhigh95')
+row.names(addcolumn) <- 'riskscore_mul'
+
+multiple_coeffecient_uni <- rbind(multiple_coeffecient_uni,addcolumn)
+row.names(addcolumn) <- 'riskscore_uni'
+multiple_coeffecient_mul <- rbind(multiple_coeffecient_mul,addcolumn)
+# Reorder the multivarite
+multiple_coeffecient_mul <- multiple_coeffecient_mul[c(1,2,3,4,5,6,7,8,10,9),]
+
+## Combine table
+clinical_result <- cbind(res,multiple_coeffecient_uni,multiple_coeffecient_mul)
+
 remove_c <- c("wald.test","se.coef.","z")
 clinical_result <- clinical_result[,-which(names(clinical_result)%in%remove_c)]
 clinical_result$mullow95 <- round(clinical_result$mullow95,digits = 2)
@@ -127,11 +151,20 @@ clinical_result$mulhigh95 <- round(clinical_result$mulhigh95,digits = 2)
 clinical_result$exp.coef. <- round(clinical_result$exp.coef.,digits=2)
 clinical_result$exp.coef. <- paste(clinical_result$exp.coef.,"(",clinical_result$mullow95,
                                    "-",clinical_result$mulhigh95,")",sep = "")
+clinical_result$mullow95.1 <- round(clinical_result$mullow95.1,digits = 2)
+clinical_result$mulhigh95.1 <- round(clinical_result$mulhigh95.1,digits = 2)
+clinical_result$exp.coef..1 <- round(clinical_result$exp.coef..1,digits=2)
+clinical_result$exp.coef..1 <- paste(clinical_result$exp.coef..1,"(",clinical_result$mullow95.1,
+                                   "-",clinical_result$mulhigh95.1,")",sep = "")
 clinical_result$coef <- round(clinical_result$coef,digits = 2)
 clinical_result$Pr...z.. <- round(clinical_result$Pr...z..,digits = 2)
-clinical_result <- clinical_result[,1:6]
+clinical_result$coef.1 <- round(clinical_result$coef.1,digits = 2)
+clinical_result$Pr...z...1 <- round(clinical_result$Pr...z...1,digits = 2)
+
+clinical_result <- clinical_result[,-which(names(clinical_result)%in%c("mullow95","mulhigh95","mullow95.1","mulhigh95.1"))]
 names(clinical_result) <- c("coef_uni","HR(95CI)_uni","p.value_uni",
-                            "coef_mul","HR(95CI)_mul","p.value_mul")
+                            "coef_mul","HR(95CI)_mul","p.value_mul",
+                            "coef_mul_m","HR(95CI)_mul_m","p.value_mul_m")
 write.csv(clinical_result,"clinical_survivalAnalysis_addRiskScore.csv")
 
 # ----> Univariate----

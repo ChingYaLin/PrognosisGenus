@@ -52,6 +52,26 @@ umap_test<-RenameGenus(umap_test)
 genus.umap = umap::umap(umap_test, )
 genus.umap_all = umap::umap(umap_test_all, )
 
+# ----> K-means cluster----
+km <- kmeans(umap_test, centers = 2, nstart = 10)
+# k-means reference: https://ithelp.ithome.com.tw/articles/10187906
+
+## To check witch cluster number is best for cluster the patient
+klist <- seq(1:10)
+knnFunction <- function(x) {
+  kms <- kmeans(umap_test, centers = x, nstart = 1)
+  ratio <- kms$tot.withinss / (kms$tot.withinss + kms$betweenss)
+}
+ratios <- sapply(klist, knnFunction)
+
+# k value與準確度視覺化
+df <- data.frame(
+  kv = klist, KMratio = ratios)
+
+ggplot(df, aes(x = kv, y = KMratio, label = kv, color = KMratio)) +
+  geom_point(size = 5) + geom_text(vjust = 2)
+
+
 # ----> Plot preprocess----
 ## 23 genus
 umap_plot_df <- data.frame(genus.umap$layout)
@@ -59,6 +79,7 @@ umap_plot_df<-umap_plot_df[order(rownames(umap_plot_df)),]
 umap_plot_df$vital <- five_year$OS
 umap_plot_df$cluster <- ifelse(umap_plot_df$X2>2.5,"cluster 1","cluster 2")
 umap_plot_df$OS.time <- five_year$os.time
+umap_plot_df$km_cluster <- km$cluster[match(rownames(umap_plot_df),names(km$cluster))]
 ## 1146 genus
 umap_plot_df_all <- data.frame(genus.umap_all$layout)
 umap_plot_df_all<-umap_plot_df_all[order(rownames(umap_plot_df_all)),]
@@ -105,8 +126,9 @@ ggplot2::ggplot(umap_plot_df,aes(x = X1,y = X2,color = vital)) +
 ggplot2::ggsave("D:/Research/PlotNew/UMAP_23_fiveYear(vital).png",dpi = 450)
 
 # ----> Cluster----
-ggplot2::ggplot(umap_plot_df,aes(x = X1,y = X2,color = cluster)) +
+ggplot2::ggplot(umap_plot_df,aes(x = X1,y = X2,color = factor(km_cluster))) +
   ggplot2::geom_point(size=3,alpha = 0.5)+
+  stat_density2d(aes(color = factor(km_cluster)))+
   ggplot2::labs(title = "Umap (23 genus)",
                 subtitle = "After five year",
                 x="X1(UMAP)",
