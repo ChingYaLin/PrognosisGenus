@@ -3,6 +3,7 @@ library(plyr)
 library(umap)
 library(survival)
 library(survminer)
+
 ####Function####
 RenameGenus <- function(df){
   colname_genus <- colnames(df)
@@ -39,13 +40,15 @@ TransferProportion <- function(df){
 setwd("D:/Research/Data/Redo")
 ## Reading data
 umap_test_all <- read.csv("D:/Research/Data/Redo/voom_svm_clean_genus(CutLow).csv", header = TRUE,row.names = 1)
-prognosis_genus <- read.csv("D:/Research/Data/Redo/Selected_genus_in_category/prognosis_selected_genus_cutoff_2.csv",header = T)
+prognosis_genus <- read.csv("D:/Research/Data/Redo/UniAndMulti_trainResult.csv",header = T)
 five_year <- read.csv("Five_year_prognosis.csv",header = T,row.names = 1)
 ## Grab the 23 prognosis genus
-prognosis_genus <- prognosis_genus$Genus
-umap_test <- umap_test_all[,which(names(umap_test_all)%in%prognosis_genus)]
+prognosis_genus <- prognosis_genus$X[2:12]
+prognosis_genus <- gsub("g__","",prognosis_genus)
 ## Rename the genus column
 umap_test_all <- RenameGenus(umap_test_all)
+umap_test <- umap_test_all[,which(names(umap_test_all)%in%prognosis_genus)]
+
 umap_test<-RenameGenus(umap_test)
 
 # ----> umap data frame----
@@ -58,11 +61,11 @@ km <- kmeans(umap_test, centers = 2, nstart = 10)
 
 ## To check witch cluster number is best for cluster the patient
 klist <- seq(1:10)
-knnFunction <- function(x) {
+kmeansFunction <- function(x) {
   kms <- kmeans(umap_test, centers = x, nstart = 1)
   ratio <- kms$tot.withinss / (kms$tot.withinss + kms$betweenss)
 }
-ratios <- sapply(klist, knnFunction)
+ratios <- sapply(klist, kmeansFunction)
 
 # k value與準確度視覺化
 df <- data.frame(
@@ -85,8 +88,9 @@ umap_plot_df_all <- data.frame(genus.umap_all$layout)
 umap_plot_df_all<-umap_plot_df_all[order(rownames(umap_plot_df_all)),]
 umap_plot_df_all$vital <- five_year$OS
 umap_plot_df_all$cluster <- ifelse(umap_plot_df$X2>2.5,"cluster 1","cluster 2")
-umap_plot_df_all$x1_order23 <- umap_plot_df$X1[match(rownames(umap_plot_df_all),rownames(umap_plot_df))]
-
+umap_plot_df_all$x1_order16 <- umap_plot_df$X1[match(rownames(umap_plot_df_all),rownames(umap_plot_df))]
+umap_plot_df_all$x2_order11 <- umap_plot_df$X2[match(rownames(umap_plot_df_all),rownames(umap_plot_df))]
+umap_plot_df_all$km_cluster <- km$cluster[match(rownames(umap_plot_df_all),names(km$cluster))]
 ####Visualization (23 genus)####
 # ----> KM-plot for cluster 1 and 2----
 par(mar=c(10,10,3,3))
@@ -94,26 +98,27 @@ new <- umap_plot_df
 new$OS.time <- ifelse(new$OS.time >= 2000, 2000, new$OS.time)
 new$OS <- ifelse(new$vital=='Dead',1,0)
 new$OS <- ifelse(new$OS.time >= 2000, 0,new$OS)
-new$cluster <- factor(new$cluster)
+new$km_cluster <- factor(new$km_cluster)
 
-fit_t <- survfit(Surv(OS.time, OS) ~ cluster, data = new)
-ggsurvplot(fit_t, data = new, pval = TRUE,title = 'KM-plot for different clusters',
+fit_t <- survfit(Surv(OS.time, OS) ~ km_cluster, data = new)
+pdf("D:/Research/PlotNew/Prognosis/KMplotForCluster.pdf")
+splots <- ggsurvplot(fit_t, data = new, pval = TRUE,title = 'KM-plot for different clusters',
            conf.int = TRUE,
            risk.table = TRUE, # Add risk table
            surv.median.line = "hv",
-           risk.table.col = "cluster",
+           risk.table.col = "km_cluster",
            risk.table.y.text.col = T,
            palette = c("#E7B800", "#2E9FDF"),
            xlab = "Time in days",
            ggtheme = theme_light())
-
-ggsave("D:/Research/PlotNew/Prognosis/KMplotForCluster.pdf", width=10, height=10)
+print(splots, newpage = FALSE)
+dev.off()
 
 
 # ----> Vital----
 ggplot2::ggplot(umap_plot_df,aes(x = X1,y = X2,color = vital)) +
   ggplot2::geom_point(size=3,alpha = 0.5)+
-  ggplot2::labs(title = "Umap (23 genus)",
+  ggplot2::labs(title = "Umap (11 genera)",
        subtitle = "After five year",
        x="X1(UMAP)",
        y="X2(UMAP)")+
@@ -123,29 +128,30 @@ ggplot2::ggplot(umap_plot_df,aes(x = X1,y = X2,color = vital)) +
                  legend.text = element_text(size = 15),
                  legend.title = element_text(size = 15),
                  plot.subtitle = element_text(size = 15))
-ggplot2::ggsave("D:/Research/PlotNew/UMAP_23_fiveYear(vital).png",dpi = 450)
+ggplot2::ggsave("D:/Research/PlotNew/Prognosis/UMAP_11_fiveYear(vital).png",dpi = 450)
 
 # ----> Cluster----
 ggplot2::ggplot(umap_plot_df,aes(x = X1,y = X2,color = factor(km_cluster))) +
   ggplot2::geom_point(size=3,alpha = 0.5)+
-  stat_density2d(aes(color = factor(km_cluster)))+
-  ggplot2::labs(title = "Umap (23 genus)",
+  #stat_density2d(aes(color = factor(km_cluster)))+
+  ggplot2::labs(title = "Umap (11 genera)",
                 subtitle = "After five year",
                 x="X1(UMAP)",
-                y="X2(UMAP)")+
+                y="X2(UMAP)",
+                color = "Cluster")+
   ggplot2::theme(plot.title = element_text(size = 20),
                  axis.title = element_text(size = 15),
                  axis.text = element_text(size = 15),
                  legend.text = element_text(size = 15),
                  legend.title = element_text(size = 15),
                  plot.subtitle = element_text(size = 15))
-ggplot2::ggsave("D:/Research/PlotNew/UMAP_23_fiveYear(cluster).png",dpi = 450)
+ggplot2::ggsave("D:/Research/PlotNew/Prognosis/UMAP_11_fiveYear(km_cluster).png",dpi = 450)
 
 # ----> x1 of 23 genus----
-ggplot2::ggplot(umap_plot_df,aes(x = X1,y = X2,color = X1)) +
+ggplot2::ggplot(umap_plot_df,aes(x = X1,y = X2,color = X2)) +
   ggplot2::geom_point(size=4,alpha = 0.5)+
   ggplot2::scale_colour_gradient2(low = "blue", mid = "snow3",high = "red", na.value = NA)+
-  ggplot2::labs(title = "Umap (23 genus)",
+  ggplot2::labs(title = "Umap (11 genera)",
                 subtitle = "After five year",
                 x="X1(UMAP)",
                 y="X2(UMAP)")+
@@ -155,15 +161,15 @@ ggplot2::ggplot(umap_plot_df,aes(x = X1,y = X2,color = X1)) +
                  legend.text = element_text(size = 15),
                  legend.title = element_text(size = 15),
                  plot.subtitle = element_text(size = 15))
-ggplot2::ggsave("D:/Research/PlotNew/UMAP_23_fiveYear(X1).png",dpi = 450)
+ggplot2::ggsave("D:/Research/PlotNew/Prognosis/UMAP_11_fiveYear(X2).png",dpi = 450)
 
 # ----> Odds ratio----
-class_matrix <- data.frame("Dead" = c(sum(umap_plot_df$cluster=="cluster 1" & umap_plot_df$vital =="Dead"),
-                                      sum(umap_plot_df$cluster=="cluster 2" & umap_plot_df$vital =="Dead")),
-                           "Alive"= c(sum(umap_plot_df$cluster=="cluster 1" & umap_plot_df$vital =="Alive"),
-                                      sum(umap_plot_df$cluster=="cluster 2" & umap_plot_df$vital =="Alive")),
+class_matrix <- data.frame("Dead" = c(sum(umap_plot_df$km_cluster==1 & umap_plot_df$vital =="Dead"),
+                                      sum(umap_plot_df$km_cluster==2 & umap_plot_df$vital =="Dead")),
+                           "Alive"= c(sum(umap_plot_df$km_cluster==1 & umap_plot_df$vital =="Alive"),
+                                      sum(umap_plot_df$km_cluster==2 & umap_plot_df$vital =="Alive")),
                            row.names = c("cluster1","cluster2"))
-png("D:/Research/PlotNew/Cluster distribution.png",
+png("D:/Research/PlotNew/Prognosis/Cluster distribution1.png",
     width = 600, height = 600, units = "px")
 par( cex.lab=1.5, cex.main=2, cex.sub=1.5)
 mosaicplot(class_matrix, color = TRUE,
@@ -176,7 +182,7 @@ fisher.test(class_matrix)
 # ----> Vital----
 ggplot2::ggplot(umap_plot_df_all,aes(x = X1,y = X2,color = vital)) +
   ggplot2::geom_point(size=3,alpha = 0.5)+
-  ggplot2::labs(title = "Umap (1146 genus)",
+  ggplot2::labs(title = "Umap (1146 genera)",
        subtitle = "After fives year",
        x="X1(UMAP)",
        y="X2(UMAP)")+
@@ -186,28 +192,29 @@ ggplot2::ggplot(umap_plot_df_all,aes(x = X1,y = X2,color = vital)) +
                  legend.text = element_text(size = 15),
                  legend.title = element_text(size = 15),
                  plot.subtitle = element_text(size = 15))
-ggplot2::ggsave("D:/Research/PlotNew/UMAP_1146_fiveYear(vital).png",dpi = 450)
+ggplot2::ggsave("D:/Research/PlotNew/Prognosis/UMAP_1146_fiveYear(vital).png",dpi = 450)
 
 # ----> Cluster----
-ggplot2::ggplot(umap_plot_df_all,aes(x = X1,y = X2,color = cluster)) +
+ggplot2::ggplot(umap_plot_df_all,aes(x = X1,y = X2,color = factor(km_cluster))) +
   ggplot2::geom_point(size=3,alpha = 0.5)+
-  ggplot2::labs(title = "Umap (1146 genus)",
+  ggplot2::labs(title = "Umap (1146 genera)",
                 subtitle = "After fives year",
                 x="X1(UMAP)",
-                y="X2(UMAP)")+
+                y="X2(UMAP)",
+                color = "Cluster")+
   ggplot2::theme(plot.title = element_text(size = 20),
                  axis.title = element_text(size = 15),
                  axis.text = element_text(size = 15),
                  legend.text = element_text(size = 15),
                  legend.title = element_text(size = 15),
                  plot.subtitle = element_text(size = 15))
-ggplot2::ggsave("D:/Research/PlotNew/UMAP_1146_fiveYear(cluster).png",dpi = 450)
+ggplot2::ggsave("D:/Research/PlotNew/Prognosis/UMAP_1146_fiveYear(km_cluster).png",dpi = 450)
 
 # ----> X1 of 23 genus----
-ggplot2::ggplot(umap_plot_df_all,aes(x = X1,y = X2,color = x1_order23)) +
+ggplot2::ggplot(umap_plot_df_all,aes(x = X1,y = X2,color = x2_order11)) +
   ggplot2::geom_point(size=3,alpha = 0.6)+
   ggplot2::scale_colour_gradient2(low = "blue", mid = "snow3",high = "red", na.value = NA)+
-  ggplot2::labs(title = "Umap (1146 genus)",
+  ggplot2::labs(title = "Umap (1146 genera)",
                 subtitle = "After five year",
                 x="X1(UMAP)",
                 y="X2(UMAP)")+
@@ -217,7 +224,7 @@ ggplot2::ggplot(umap_plot_df_all,aes(x = X1,y = X2,color = x1_order23)) +
                  legend.text = element_text(size = 15),
                  legend.title = element_text(size = 15),
                  plot.subtitle = element_text(size = 15))
-ggplot2::ggsave("D:/Research/PlotNew/UMAP_1146_fiveYear(X1).png",dpi = 450)
+ggplot2::ggsave("D:/Research/PlotNew/Prognosis/UMAP_1146_fiveYear(X2).png",dpi = 450)
 
 
 ####Label by phylum####

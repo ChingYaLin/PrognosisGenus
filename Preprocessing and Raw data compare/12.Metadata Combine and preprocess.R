@@ -1,5 +1,6 @@
 ####Function####
 AssignChrToNum <- function(df,column){
+  # Transfer the different chracters of clinical traits to differet number
   temp <- unique(df[[column]])
   temp <- temp[!is.na(temp)]
   temp <- data.frame(type=sort(temp),num=c(0:(length(temp)-1)))

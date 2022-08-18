@@ -87,8 +87,6 @@ genus_matrix$PFI <- tcga_select$PFI[match_sample]
 genus_matrix$PFI.time <- tcga_select$PFI.time[match_sample]
 genus_matrix$risk_score_uni <- prognosis_genus_table$risk_score_uni[match(rownames(genus_matrix),rownames(prognosis_genus_table))]
 genus_matrix$risk_score_mul <- prognosis_genus_table$risk_score_mul[match(rownames(genus_matrix),rownames(prognosis_genus_table))]
-genus_matrix$risk_score_uni10 <- prognosis_genus_table$risk_score_uni10[match(rownames(genus_matrix),rownames(prognosis_genus_table))]
-genus_matrix$risk_score_mul10 <- prognosis_genus_table$risk_score_mul10[match(rownames(genus_matrix),rownames(prognosis_genus_table))]
 
 
 # ----> Seperate diff prognosis data----
@@ -113,8 +111,8 @@ library("survminer")
 library("readxl")
 library('dplyr')
 # ----> Separate training data and testing data----
-three_year$OS <- as.factor(three_year$OS)
-data_split <- rsample::initial_split(three_year,
+one_year$OS <- as.factor(one_year$OS)
+data_split <- rsample::initial_split(one_year,
                                      prop = 0.8,
                                      strata = OS)
 train.data <- data_split %>%
@@ -250,6 +248,7 @@ svm_spec <- svm_poly()%>%
   fit(formular, data = train.data)
 '
 # ----> Risk score----
+# Calculate the risk score of patient
 test <- test.data
 test$OS <- ifelse(test$OS=="Alive",0,1)
 ## Reset status by 2000 days to be end point
@@ -259,6 +258,7 @@ test$OS.time <- ifelse(test$OS.time >= 2000, 2000, test$OS.time)
 
 test <- DiffYearData(test,5)
 ##UNI
+## Plot the KM-plot for selected model
 
 quartilelist <- quantile(test$riskscore_uni)[2:4]
 threshold <- c("third_q","median_q","first_q")
@@ -345,22 +345,22 @@ riskmul_result_t <- PredictToResultOS(riskmul_spec ,"risk score mul",test.data)
 out_t <- bind_rows(log_result_t, rf_result_t,xgb_result_t,svm_result_t,
                  riskuni_result_t,riskmul_result_t)
 # ----> Confusion matrix----
-'
+
 confusion_matrix <- out %>%
   group_by(model)%>%
   yardstick::conf_mat(truth = OS,estimate = .pred_class)
   
-
+'
 out_t %>%
-  filter(model==unique(out_t$model)[1])%>%
+  filter(model==unique(out_t$model)[6])%>%
   yardstick::conf_mat(truth = OS,estimate = .pred_class)%>%
   autoplot(type="heatmap")+
-  ggplot2::labs(title = "Confusion matrix (Logistic)")+
-  theme(plot.title = element_text(size = 30),
+  ggplot2::labs(title = "Confusion matrix (Risk Score_Univariate)")+
+  theme(plot.title = element_text(size = 25),
         axis.title = element_text(size = 20),
         axis.text = element_text(size = 20),
         text= element_text(size = 20))
-ggplot2::ggsave("D:/Research/PlotNew/Prognosis/WGS_OS/Confusion_matrix(log).png",dpi = 450)
+ggplot2::ggsave("D:/Research/PlotNew/Prognosis/WGS_OS/Confusion_matrix(RS_U).png",dpi = 450)
 '
 # ----> Custom matrix ----
 #custom_metrics <- yardstick::metric_set(accuracy, sens, spec, precision, recall, f_meas, kap, mcc)
@@ -426,18 +426,18 @@ store_test <- out_t
 store_train <- out
 #save(store_test, store_train,file = 'D:/Research/Project_LUADPrognosisGenus/Prognosis/plot_OSROC.RData')
 
-l <- paste("AUC.log = ",round(auc10time$mean[which(rownames(auc10time)=="logistic")],digits = 4)," (กำ ",round(auc10time$sd[which(rownames(auc10time)=="logistic")],digits = 4),')','\n',
-           "AUC.rf = ",round(auc10time$mean[which(rownames(auc10time)=="random forest")],digits = 4)," (กำ ",round(auc10time$sd[which(rownames(auc10time)=="random forest")],digits = 4),')','\n',
-           "AUC.svm = ",round(auc10time$mean[which(rownames(auc10time)=="svm")],digits = 4)," (กำ ",round(auc10time$sd[which(rownames(auc10time)=="svm")],digits = 4),')','\n',
-           "AUC.xgb = ",round(auc10time$mean[which(rownames(auc10time)=="XGBoost")],digits = 4)," (กำ ",round(auc10time$sd[which(rownames(auc10time)=="XGBoost")],digits = 4),')','\n',
-           "AUC.risk_uni = ",round(auc10time$mean[which(rownames(auc10time)=="risk score uni")],digits = 4)," (กำ ",round(auc10time$sd[which(rownames(auc10time)=="risk score uni")],digits = 4),')','\n',
-           "AUC.risk_mul = ",round(auc10time$mean[which(rownames(auc10time)=="risk score mul")],digits = 4)," (กำ ",round(auc10time$sd[which(rownames(auc10time)=="risk score mul")],digits = 4),')',sep = "")
+l <- paste("AUC.log = ",round(auc10time$mean[which(rownames(auc10time)=="logistic")],digits = 4)," กำ ",round(auc10time$sd[which(rownames(auc10time)=="logistic")],digits = 4),'\n',
+           "AUC.rf = ",round(auc10time$mean[which(rownames(auc10time)=="random forest")],digits = 4)," กำ ",round(auc10time$sd[which(rownames(auc10time)=="random forest")],digits = 4),'\n',
+           "AUC.svm = ",round(auc10time$mean[which(rownames(auc10time)=="svm")],digits = 4)," กำ ",round(auc10time$sd[which(rownames(auc10time)=="svm")],digits = 4),'\n',
+           "AUC.xgb = ",round(auc10time$mean[which(rownames(auc10time)=="XGBoost")],digits = 4)," กำ ",round(auc10time$sd[which(rownames(auc10time)=="XGBoost")],digits = 4),'\n',
+           "AUC.risk_uni = ",round(auc10time$mean[which(rownames(auc10time)=="risk score uni")],digits = 4)," กำ ",round(auc10time$sd[which(rownames(auc10time)=="risk score uni")],digits = 4),'\n',
+           "AUC.risk_mul = ",round(auc10time$mean[which(rownames(auc10time)=="risk score mul")],digits = 4)," กำ ",round(auc10time$sd[which(rownames(auc10time)=="risk score mul")],digits = 4),sep = "")
 store_train %>%
   group_by(model) %>% # group to get individual ROC curve for each model
   roc_curve(truth = OS, .pred_Alive) %>% # get values to plot an ROC curve
   ggplot2::autoplot()+
   geom_abline(slope = 1, intercept = 0, size = 0.4)+
-  ggplot2::labs(title = "ROC Curve (After three year)",
+  ggplot2::labs(title = "ROC Curve (After one year)",
                 subtitle = "Training data")+
   ggplot2::annotate(geom="text", x=0.75, y=0.2,
                     label=l,size=4)+
@@ -447,20 +447,20 @@ store_train %>%
         axis.text = element_text(size = 15),
         legend.text = element_text(size = 15),
         legend.title = element_text(size = 15))
-ggplot2::ggsave("D:/Research/PlotNew/Prognosis/WGS_OS/ROC_threeYear_OS_train.png",dpi = 450)
+ggplot2::ggsave("D:/Research/PlotNew/Prognosis/WGS_OS/ROC_oneYear_OS_train.png",dpi = 450)
 
-l <- paste("AUC.log = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="logistic")],digits = 4)," (กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="logistic")],digits = 4),')','\n',
-           "AUC.rf = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="random forest")],digits = 4)," (กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="random forest")],digits = 4),')','\n',
-           "AUC.svm = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="svm")],digits = 4)," (กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="svm")],digits = 4),')','\n',
-           "AUC.xgb = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="XGBoost")],digits = 4)," (กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="XGBoost")],digits = 4),')','\n',
-           "AUC.risk_uni = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="risk score uni")],digits = 4)," (กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="risk score uni")],digits = 4),')','\n',
-           "AUC.risk_mul = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="risk score mul")],digits = 4)," (กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="risk score mul")],digits = 4),')',sep = "")
+l <- paste("AUC.log = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="logistic")],digits = 4)," กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="logistic")],digits = 4),'\n',
+           "AUC.rf = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="random forest")],digits = 4)," กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="random forest")],digits = 4),'\n',
+           "AUC.svm = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="svm")],digits = 4)," กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="svm")],digits = 4),'\n',
+           "AUC.xgb = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="XGBoost")],digits = 4)," กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="XGBoost")],digits = 4),'\n',
+           "AUC.risk_uni = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="risk score uni")],digits = 4)," กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="risk score uni")],digits = 4),'\n',
+           "AUC.risk_mul = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="risk score mul")],digits = 4)," กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="risk score mul")],digits = 4),sep = "")
 store_test %>%
   group_by(model) %>% # group to get individual ROC curve for each model
   roc_curve(truth = OS, .pred_Alive) %>% # get values to plot an ROC curve
   ggplot2::autoplot()+
   geom_abline(slope = 1, intercept = 0, size = 0.4)+
-  ggplot2::labs(title = "ROC Curve (After three year)",
+  ggplot2::labs(title = "ROC Curve (After one year)",
                 subtitle = "Testing data")+
   ggplot2::annotate(geom="text", x=0.75, y=0.2,
                     label=l,size=4)+
@@ -470,14 +470,30 @@ store_test %>%
         axis.text = element_text(size = 15),
         legend.text = element_text(size = 15),
         legend.title = element_text(size = 15))
-ggplot2::ggsave("D:/Research/PlotNew/Prognosis/WGS_OS/ROC_threeYear_OS_test.png",dpi = 450)
+ggplot2::ggsave("D:/Research/PlotNew/Prognosis/WGS_OS/ROC_oneYear_OS_test.png",dpi = 450)
 
 
 
 
 ####Model building (PFI)####
-overlap_genus <- read.csv('D:/Research/Data/Redo/OSandPFIoverlapGenus.csv')
-overlap_genus <- overlap_genus$X
+# ----> Data processing----
+pfi_genus <- read.csv('D:/Research/Data/Redo/UniAndMulti_survivalanalysis_PFI.csv')
+pfi_genus <- pfi_genus$X
+
+genus_abundance <- RenameGenus(genus)
+## for 11 significant genus
+genus_abundance <- genus_abundance[,which(names(genus_abundance)%in%pfi_genus)]
+genus_matrix <- genus_abundance[order(row.names(genus_abundance)),]
+# ---> Combine analysis data----
+#combine data to analysis
+match_sample <- match(rownames(genus_matrix),tcga_select$X)
+genus_matrix$OS.time <- tcga_select$OS.time[match_sample]
+genus_matrix$OS <- tcga_select$vital_status[match_sample]
+genus_matrix$PFI <- tcga_select$PFI[match_sample]
+genus_matrix$PFI.time <- tcga_select$PFI.time[match_sample]
+five_year <- DiffYearData(genus_matrix,5)
+
+
 # ----> Separate training data and testing data----
 five_year$PFI <- as.factor(five_year$PFI)
 data_split <- rsample::initial_split(five_year,
@@ -489,12 +505,12 @@ test.data <- data_split %>%
   testing()
 
 # ----> Fit cox model and riskscore by train data----
-stay_column <- c(overlap_genus, 'PFI','PFI.time')
+stay_column <- c(pfi_genus, 'PFI','PFI.time')
 ## Univariate
 train <- train.data[,which(names(train.data)%in%stay_column)]
 train$PFI <- ifelse(train$PFI==0,0,1)
 
-covariates <- overlap_genus
+covariates <- pfi_genus
 ## Set formulas
 univ_formulas <- sapply(covariates,
                         function(x) as.formula(paste('Surv(PFI.time, PFI)~', x)))
@@ -544,7 +560,7 @@ genus_result$coef <- round(genus_result$coef,digits = 2)
 genus_result <- genus_result[,1:6]
 names(genus_result) <- c("coef_uni","HR(95CI)_uni","p.value_uni",
                          "coef_mul","HR(95CI)_mul","p.value_mul")
-write.csv(genus_result,"D:/Research/Data/Redo/UniAndMulti_trainResultForPFI.csv")
+#write.csv(genus_result,"D:/Research/Data/Redo/UniAndMulti_trainResultForPFI.csv")
 
 ###Calculate risk score
 ##Univariate coefficient (Train.data)
@@ -588,7 +604,7 @@ for (i in 1:length(test.data$riskscore_mul)) {
 
 
 # ----> Setting the formular for training model----
-select_genus <- overlap_genus
+select_genus <- pfi_genus
 select_genus <- paste(select_genus,collapse = "+")
 formular <- as.formula(paste('PFI~', select_genus))
 
@@ -615,7 +631,7 @@ svm_spec <- svm_poly()%>%
   set_engine(engine = "kernlab")%>%
   set_mode("classification")%>%
   fit(formular, data = train.data)
-
+'
 # ----> Risk score----
 test <- test.data
 ## Reset status by 2000 days to be end point
@@ -645,7 +661,7 @@ for (i in 1:length(threshold)) {
 if (TRUE) {
   # Arrange and save into pdf file
   res <- arrange_ggsurvplots(splots, print = FALSE,ncol = 1, nrow = 1, risk.table.height = 0.2)
-  ggsave("D:/Research/PlotNew/Prognosis/SurvivalKMplot_PFIuni_test.pdf", res, width=6, height=6)
+  ggsave("D:/Research/PlotNew/Prognosis/WGS_PFI/SurvivalKMplot_PFIuni_test.pdf", res, width=6, height=6)
 }
 
 ## MUL
@@ -671,9 +687,9 @@ for (i in 1:length(threshold)) {
 if (TRUE) {
   # Arrange and save into pdf file
   res1 <- arrange_ggsurvplots(splots1, print = FALSE,ncol = 1, nrow = 1, risk.table.height = 0.2)
-  ggsave("D:/Research/PlotNew/Prognosis/SurvivalKMplot_PFImul_test.pdf", res1, width=6, height=6)
+  ggsave("D:/Research/PlotNew/Prognosis/WGS_PFI/SurvivalKMplot_PFImul_test.pdf", res1, width=6, height=6)
 }
-
+'
 ## Last I decide median to be threshol
 riskuni_spec <- logistic_reg() %>%
   set_engine(engine = "glm") %>%
@@ -686,32 +702,44 @@ riskmul_spec <- logistic_reg() %>%
   fit(PFI ~ riskscore_mul, data = train.data)
 
 #### Predict data ####
-log_result <- PredictToResultPFI(log_spec,"logistic",test.data)
-rf_result <- PredictToResultPFI(rf_spec,"random forest",test.data)
-xgb_result <- PredictToResultPFI(xgb_spec,"XGBoost",test.data)
-svm_result <- PredictToResultPFI(svm_spec,"svm",test.data)
-riskuni_result <- PredictToResultPFI(riskuni_spec ,"risk score uni",test.data)
-riskmul_result <- PredictToResultPFI(riskmul_spec ,"risk score mul",test.data)
+# ----> training data----
+log_result <- PredictToResultPFI(log_spec,"logistic",train.data)
+rf_result <- PredictToResultPFI(rf_spec,"random forest",train.data)
+xgb_result <- PredictToResultPFI(xgb_spec,"XGBoost",train.data)
+svm_result <- PredictToResultPFI(svm_spec,"svm",train.data)
+riskuni_result <- PredictToResultPFI(riskuni_spec ,"risk score uni",train.data)
+riskmul_result <- PredictToResultPFI(riskmul_spec ,"risk score mul",train.data)
 
 out <- bind_rows(log_result, rf_result,xgb_result,svm_result,
                  riskuni_result,riskmul_result)
+
+# ----> testing data----
+log_result_t <- PredictToResultPFI(log_spec,"logistic",test.data)
+rf_result_t <- PredictToResultPFI(rf_spec,"random forest",test.data)
+xgb_result_t <- PredictToResultPFI(xgb_spec,"XGBoost",test.data)
+svm_result_t <- PredictToResultPFI(svm_spec,"svm",test.data)
+riskuni_result_t <- PredictToResultPFI(riskuni_spec ,"risk score uni",test.data)
+riskmul_result_t <- PredictToResultPFI(riskmul_spec ,"risk score mul",test.data)
+
+out_t <- bind_rows(log_result_t, rf_result_t,xgb_result_t,svm_result_t,
+                   riskuni_result_t,riskmul_result_t)
 # ----> Confusion matrix----
 confusion_matrix <- out %>%
   group_by(model)%>%
   yardstick::conf_mat(truth = PFI,estimate = .pred_class)
 
-
-out %>%
-  filter(model=="svm")%>%
+'
+out_t %>%
+  filter(model=="logistic")%>%
   yardstick::conf_mat(truth = PFI,estimate = .pred_class)%>%
   autoplot(type="heatmap")+
-  ggplot2::labs(title = "Confusion matrix (svm)")+
-  theme(plot.title = element_text(size = 30),
+  ggplot2::labs(title = "Confusion matrix (Logistic)")+
+  theme(plot.title = element_text(size = 25),
         axis.title = element_text(size = 20),
         axis.text = element_text(size = 20),
         text= element_text(size = 20))
-ggplot2::ggsave("D:/Research/PlotNew/Prognosis/Confusion_matrix(svm).png",dpi = 450)
-
+ggplot2::ggsave("D:/Research/PlotNew/Prognosis/WGS_PFI/Confusion_matrix(log).png",dpi = 450)
+'
 # ----> Custom matrix ----
 custom_metrics <- yardstick::metric_set(accuracy, sens, spec, precision, recall, f_meas, kap, mcc)
 cus <- out %>%
@@ -722,40 +750,101 @@ cus <- out %>%
 # Write the first data set in a new workbook
 library(openxlsx)
 
-dataset_names <- list('XGBoost' = cus[which(cus$model=="XGBoost"),],
-                      'logistic' = cus[which(cus$model=="logistic"),],
-                      'RF' = cus[which(cus$model=="random forest"),],
-                      'svm' = cus[which(cus$model=="svm"),],
-                      'RS_U' = cus[which(cus$model=="risk score uni"),],
-                      'RS_M' = cus[which(cus$model=="risk score mul"),])
-openxlsx::write.xlsx(dataset_names, file = "D:/Research/Data/Redo/Prognosis_custommatrix_PFI.xlsx")
+#dataset_names <- list('XGBoost' = cus[which(cus$model=="XGBoost"),],
+#                      'logistic' = cus[which(cus$model=="logistic"),],
+#                      'RF' = cus[which(cus$model=="random forest"),],
+#                      'svm' = cus[which(cus$model=="svm"),],
+#                      'RS_U' = cus[which(cus$model=="risk score uni"),],
+#                      'RS_M' = cus[which(cus$model=="risk score mul"),])
+#openxlsx::write.xlsx(dataset_names, file = "D:/Research/Data/Redo/Prognosis_custommatrix_PFI.xlsx")
 # ----> AUC-ROC ----
-auc <- out %>%
+auc1 <- out%>%
+  group_by(model)%>% yardstick::roc_auc(truth = PFI,
+                                        .pred_0)
+auc1_t <- out_t %>%
   group_by(model) %>% yardstick::roc_auc(truth = PFI,
                                          .pred_0)
 
-## plot roc
-out %>%
+# ----> 10 times auc----
+auc10time <- data.frame(model = auc1$model,auc1 = auc1$.estimate,
+                        auc2 = auc2$.estimate, auc3 = auc3$.estimate,
+                        auc4 = auc4$.estimate, auc5 = auc5$.estimate,
+                        auc6 = auc6$.estimate, auc7 = auc7$.estimate,
+                        auc8 = auc8$.estimate, auc9 = auc9$.estimate,
+                        auc10 = auc10$.estimate)
+
+auc10time_t <- data.frame(model = auc1_t$model,auc1 = auc1_t$.estimate,
+                          auc2 = auc2_t$.estimate, auc3 = auc3_t$.estimate,
+                          auc4 = auc4_t$.estimate, auc5 = auc5_t$.estimate,
+                          auc6 = auc6_t$.estimate, auc7 = auc7_t$.estimate,
+                          auc8 = auc8_t$.estimate, auc9 = auc9_t$.estimate,
+                          auc10 = auc10_t$.estimate)
+
+#Rename the 10 times rows and remove the model column
+rownames(auc10time) <- auc10time$model
+rownames(auc10time_t) <- auc10time_t$model
+auc10time <- auc10time[,-1]
+auc10time_t <- auc10time_t[,-1]
+# Calculate the mean and standard deviation of the 10 times auc
+auc10time$mean <- rowMeans(auc10time[,1:10])
+auc10time_t$mean <- rowMeans(auc10time_t[,1:10])
+
+for (i in 1:length(rownames(auc10time))) {
+  auc10time$sd[i] <- sd(auc10time[i,1:10])
+  auc10time_t$sd[i] <- sd(auc10time_t[i,1:10])
+}
+
+#write.csv(auc10time,'D:/Research/Data/Redo/10timesAUC_multisignificant_PFI_train.csv')
+#write.csv(auc10time_t,'D:/Research/Data/Redo/10timesAUC_multisignificant_PFI_test.csv')
+
+#----> plot roc----
+store_test <- out_t
+store_train <- out
+#save(store_test, store_train,file = 'D:/Research/Project_LUADPrognosisGenus/Prognosis/plot_PFIROC.RData')
+
+l <- paste("AUC.log = ",round(auc10time$mean[which(rownames(auc10time)=="logistic")],digits = 4)," กำ ",round(auc10time$sd[which(rownames(auc10time)=="logistic")],digits = 4),'\n',
+           "AUC.rf = ",round(auc10time$mean[which(rownames(auc10time)=="random forest")],digits = 4)," กำ ",round(auc10time$sd[which(rownames(auc10time)=="random forest")],digits = 4),'\n',
+           "AUC.svm = ",round(auc10time$mean[which(rownames(auc10time)=="svm")],digits = 4)," กำ ",round(auc10time$sd[which(rownames(auc10time)=="svm")],digits = 4),'\n',
+           "AUC.xgb = ",round(auc10time$mean[which(rownames(auc10time)=="XGBoost")],digits = 4)," กำ ",round(auc10time$sd[which(rownames(auc10time)=="XGBoost")],digits = 4),'\n',
+           "AUC.risk_uni = ",round(auc10time$mean[which(rownames(auc10time)=="risk score uni")],digits = 4)," กำ ",round(auc10time$sd[which(rownames(auc10time)=="risk score uni")],digits = 4),'\n',
+           "AUC.risk_mul = ",round(auc10time$mean[which(rownames(auc10time)=="risk score mul")],digits = 4)," กำ ",round(auc10time$sd[which(rownames(auc10time)=="risk score mul")],digits = 4),sep = "")
+store_train %>%
   group_by(model) %>% # group to get individual ROC curve for each model
   roc_curve(truth = PFI, .pred_0) %>% # get values to plot an ROC curve
   ggplot2::autoplot()+
   geom_abline(slope = 1, intercept = 0, size = 0.4)+
   ggplot2::labs(title = "ROC Curve (After five year)",
-                subtitle = "Tresting data")+
-  ggplot2::annotate(geom="text", x=0.75, y=0.2, 
-                    label=paste("AUC.log =",round(auc$.estimate[which(auc$model=="logistic")],digits = 4),"\n",
-                                "AUC.rf =",round(auc$.estimate[which(auc$model=="random forest")],digits = 4),"\n",
-                                "AUC.svm =",round(auc$.estimate[which(auc$model=="svm")],digits = 4),"\n",
-                                "AUC.xgb =",round(auc$.estimate[which(auc$model=="XGBoost")],digits = 4),"\n",
-                                "AUC.risk_uni =",round(auc$.estimate[which(auc$model=="risk score uni")],digits = 4),"\n",
-                                "AUC.risk_mul =",round(auc$.estimate[which(auc$model=="risk score mul")],digits = 4)),
-                    size=4)+
+                subtitle = "Training data")+
+  ggplot2::annotate(geom="text", x=0.75, y=0.2,
+                    label=l,size=4)+
   theme(plot.title = element_text(size = 20),
         plot.subtitle = element_text(size = 15),
         axis.title = element_text(size = 15),
         axis.text = element_text(size = 15),
         legend.text = element_text(size = 15),
         legend.title = element_text(size = 15))
-ggplot2::ggsave("D:/Research/PlotNew/Prognosis/ROC_threeYear_PFI_test.png",dpi = 450)
+ggplot2::ggsave("D:/Research/PlotNew/Prognosis/WGS_PFI/ROC_fiveYear_PFI_train.png",dpi = 450)
 
+l <- paste("AUC.log = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="logistic")],digits = 4)," กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="logistic")],digits = 4),'\n',
+           "AUC.rf = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="random forest")],digits = 4)," กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="random forest")],digits = 4),'\n',
+           "AUC.svm = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="svm")],digits = 4)," กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="svm")],digits = 4),'\n',
+           "AUC.xgb = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="XGBoost")],digits = 4)," กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="XGBoost")],digits = 4),'\n',
+           "AUC.risk_uni = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="risk score uni")],digits = 4)," กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="risk score uni")],digits = 4),'\n',
+           "AUC.risk_mul = ",round(auc10time_t$mean[which(rownames(auc10time_t)=="risk score mul")],digits = 4)," กำ ",round(auc10time_t$sd[which(rownames(auc10time_t)=="risk score mul")],digits = 4),sep = "")
+store_test %>%
+  group_by(model) %>% # group to get individual ROC curve for each model
+  roc_curve(truth = PFI, .pred_0) %>% # get values to plot an ROC curve
+  ggplot2::autoplot()+
+  geom_abline(slope = 1, intercept = 0, size = 0.4)+
+  ggplot2::labs(title = "ROC Curve (After five year)",
+                subtitle = "Testing data")+
+  ggplot2::annotate(geom="text", x=0.75, y=0.2,
+                    label=l,size=4)+
+  theme(plot.title = element_text(size = 20),
+        plot.subtitle = element_text(size = 15),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 15),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 15))
+ggplot2::ggsave("D:/Research/PlotNew/Prognosis/WGS_PFI/ROC_fiveYear_PFI_test.png",dpi = 450)
 

@@ -13,6 +13,7 @@ RenameGenus <- function(df) {
 }
 
 CreateRawCountTable <- function(df){
+  # Input a dataframe, it can output the sum of raw count of each sample
   sums <- rowSums(df[,1:1284])
   sums <- data.frame(sums)
   sums$X <- df$UUID
@@ -85,7 +86,7 @@ ggplot2::ggplot(compare_table,aes(x=wgs_sum,y=rna_sum))+
                                 "The mean of sample raw counts:\n",
                                 "WGS mean:",wgs_mean,"/ RNA-seq mean:",rna_mean),
                     size=5)
-
+# Plot the raw count compare dotplot
 ggplot2::ggsave("D:/Research/PlotNew/1.Raw counts compare(WGS,RNA).png",
                 width = 10, height = 7.5)
 

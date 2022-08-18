@@ -12,6 +12,7 @@ Prevalence_genus <- function(cutoff){
   return(result)
 }
 PrevalenceExceed20 <- function(df){
+  # Checking whether the provalence of genus is exceed 20% of total samples, if yes, it would return 'Ture', otherwise, it would return 'False'
   df <- df[order(df$prevalence),]
   df$num <- c(1:1284)
   df$prevalence_exceed_20 <- ifelse(df$prevalence>0.2,T,F)
@@ -47,6 +48,7 @@ hist(all_genus_value$Value,
 abline(v = 2, col = "red", lwd = 3)
 dev.off()
 # ----> Calculate the prevalence----
+# Setting the different genus abundance cutoff to calculate the prevalence of each genus
 zero <- Prevalence_genus(0)
 one <- Prevalence_genus(1)
 two <- Prevalence_genus(2)
@@ -87,6 +89,7 @@ ggplot2::ggplot(data = two,aes(x=num,y=prevalence)) +
   
 ggsave("D:/Research/PlotNew/20.Each genus Prevalence(Cutoff=2).png",
        width = 8, height = 6)
+
 # ----> Write data----
 write.csv(zero,file="D:/Research/Data/Redo/Cutoff_0_genus.csv",row.names = F)
 write.csv(one,file="D:/Research/Data/Redo/Cutoff_1_genus.csv",row.names = F)

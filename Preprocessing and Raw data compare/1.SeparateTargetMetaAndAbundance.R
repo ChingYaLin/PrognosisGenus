@@ -28,11 +28,12 @@ head(df_meta)
 head(df_kraken)
 
 # ---->Get the target data from whole TCGA sample----
+# We filter the LUAD data from raw data
 clean_meta <- Filtermetadata(df_meta,cancer_type = "TCGA-LUAD")
-#Whole target 
+#Whole target (We separate the wgs and rna type data)
 meta_wgs<- clean_meta[["wgs"]]
 meta_rnaseq <- clean_meta[["rna"]]
-#Remove replicate sample in RNA-seq AND WGS
+#Remove replicate sample in RNA-seq and WGS
 filter_rna <- meta_rnaseq[!duplicated(meta_rnaseq[ , c("sample_uuid")]), ] 
 filter_wgs <- meta_wgs[!duplicated(meta_wgs[ , c("sample_uuid")]), ] 
 #Extract the samples that have WGS data and RNA data in the same time

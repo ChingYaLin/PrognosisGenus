@@ -2,6 +2,7 @@
 library(plyr)
 
 RenameGenus <- function(df){
+  # Rename the genus name into genus level
   colname_genus <- colnames(df)
   for (j in 1:length(colname_genus)) {
     if (colname_genus[j]!='X'){
@@ -16,6 +17,7 @@ RenameGenus <- function(df){
 }
 
 RenameSample <- function(df){
+  # Rename the sample's name to TCGA-Barcode
   temp <- colnames(df)
   temp <- substr(temp,1,12)
   temp <- gsub("[.]","-",temp)
@@ -24,6 +26,7 @@ RenameSample <- function(df){
 }
 
 TransferTheCategory <- function(df,category,informtable){
+  # Transfer the genus abundance dataframe of each sample to other microbiome category level
   temp <- df
   temp$category <- informtable[[category]][which(informtable$query%in%rownames(temp))]
   temp <- plyr::ddply(temp,"category",numcolwise(sum))
@@ -35,6 +38,7 @@ TransferTheCategory <- function(df,category,informtable){
 }
 
 TransferProportion <- function(df){
+  # Count the genus proportion
   df <- data.frame(t(df))
   df <- df/rowSums(df)
   df <- data.frame(t(df))
@@ -42,6 +46,7 @@ TransferProportion <- function(df){
 }
 
 sccCalculate <- function(df1,df2){
+  # To calculate the correlation between two type of data
   result <- names(df1)
   result <- data.frame(result)
   result$pvalue <- 0

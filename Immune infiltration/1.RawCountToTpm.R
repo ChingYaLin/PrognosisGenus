@@ -40,7 +40,7 @@ expr_cutoff <- 0
 sum(mean_log2_cpm > expr_cutoff)
 data_clean <- raw_count[mean_log2_cpm > expr_cutoff, ]
 
-'''
+'
 # ----> Search the gene length(for tpm)----
 ###!!! Need ti take long time!!!!
 ensembl_list <- rownames(data_clean)
@@ -58,7 +58,7 @@ result <- na.omit(result)
 
 # ----> Save the gene length file----
 write.csv(result,file="D:/Research/Data/Redo/Gene_length.csv",row.names = T)
-'''
+'
 
 # ----> Load gene length file----
 result <- read.csv("D:/Research/Data/Redo/Gene_length.csv",row.names = 1)

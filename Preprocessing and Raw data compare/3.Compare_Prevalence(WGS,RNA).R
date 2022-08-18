@@ -55,9 +55,10 @@ library(ggplot2)
 compare_table <- compare_table[order(-compare_table$RNA,-compare_table$WGS),]
 num <- c(1:length(compare_table$RNA))
 compare_table$num <- num
+# Minus the prevalence between RNA and WGS in each genus
 compare_table$compare <- compare_table$RNA-compare_table$WGS
 
-#count the number of > and <
+# Count the number of > and <
 rna_bigger <- sum(compare_table$compare>=0.1)
 wgs_bigger <- sum(compare_table$compare<=(-0.1))
 equal <- sum(compare_table$compare>(-0.1) & compare_table$compare <0.1)

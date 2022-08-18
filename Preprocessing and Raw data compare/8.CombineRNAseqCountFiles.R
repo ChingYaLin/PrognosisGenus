@@ -1,5 +1,6 @@
 #### Functions ####
 PathName <- function(foldername,filename){
+  # To read the folder file, set every file's path
   path <- paste("D:/Research/TCGA",foldername,filename,sep = '/')
   return(path)
 }
